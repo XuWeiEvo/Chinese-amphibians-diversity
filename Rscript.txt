@@ -1,0 +1,71 @@
+## transforming occurrences to grid cells map
+library(letsR)
+data <- read.csv("occurrences.csv") ## contains raw data of geographic coordinates, and is available from the corresponding author upon reasonable request, with the only purpose of science to protect endangered species.
+xy <- data[, c("lon", "lat")]
+sp_name <- data$Species
+PAM_points <- lets.presab.points(xy, sp_name, xmn = -180, xmx = 180,ymn = -90, ymx = 90, res = 1)
+write.csv(PAM_points$Presence_and_Absence_Matrix,"matrix.csv")
+
+## matrix.csv were input into ArcGIS to remove those outside of China boundary,
+## and generated a matrix_in_China.csv.
+
+## estimating beta simpson value and use UPGMA to cluster grid cells
+library(ape)
+library(vegan)
+matrix <- read.csv("matrix_in_China.csv",row.names=1)
+beta_sim<-betadiver(matrix,"sim")
+beta_sim_tree <- hclust(beta_sim,"ave")
+
+## determining the best optimal cluster value
+library(GMD)
+css.obj <- css.hclust(beta_sim,beta_sim_tree)
+elbow.obj <- elbow.batch(css.obj)
+k <- elbow.obj$k
+cutree.obj <- cutree(beta_sim_tree,k=k)
+write.csv(cutree.obj,"cutree.obj.csv")
+
+## estimating endemism
+library(phyloregion)
+matrix1<-as.matrix(matrix)
+matrix2<-Matrix(matrix1)
+endemism<-weighted_endemism(matrix2)
+write.csv(endemism,"endemism.csv")
+
+## matrix_in_China.csv were manually edited to remove those species not in the tree.
+## and generated a file matrix_PDPE.csv
+
+## estimating phylogenetic diversity and phylogenetic endemism
+library(phyloregion)
+tree <- read.tree("intree.dated.tre")
+com <- read.csv("matrix_PDPE.csv",row.names=1)
+com1 <- Matrix(as.matrix(com))
+pd <-PD(com1,tree)
+write.csv(pd,"pd.csv")
+pe <- phylo_endemism(com1, tree)
+write.csv(pe,"pe.csv")
+
+## spatial regression model
+library(spdep)
+library(sp)
+library(spatialreg)
+
+input <- read.csv("described~cryptic.csv")  ## manually edited from matrix_in_China.csv
+lat <-input$lat
+long <-input$lon
+test <- input[,c(1,2)]
+sptest <- SpatialPoints(test, proj4string = CRS("+proj=longlat +datum=WGS84"))
+nbk1 <- knn2nb(knearneigh(sptest, k =1, longlat =TRUE))
+snbk1 <- make.sym.nb(nbk1)
+lw<-nb2listw(snbk1, style="W")
+
+## Ordinary Least Squares linears regression
+f1 <- lndescribed ~ lnundescribed
+m1 <- lm (f1,input=input)
+input$residuals <- residuals(m1)
+moran.mc(input$residuals, lw, 999)
+
+## spatial autoregressive lag model
+m1s = lagsarlm(f1, input=input, lw, tol.solve=1.0e-30)
+summary(m1s)
+input$residuals <- residuals(m1s)
+moran.mc(input$residuals, lw, 999)
