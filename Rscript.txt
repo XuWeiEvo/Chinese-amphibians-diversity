@@ -1,13 +1,16 @@
+## Hidden hotspots of amphibian biodiversity in China, Xu et al., doi: xxxxxx.
+## R code and all related files were freely accessed in github platform (https://github.com/XuWeiEvo/Chinese-amphibians-diversity)
+
 ## transforming occurrences to grid cells map
 library(letsR)
 data <- read.csv("occurrences.csv") ## contains raw data of geographic coordinates, and is available from the corresponding author upon reasonable request, with the only purpose of science to protect endangered species.
 xy <- data[, c("lon", "lat")]
 sp_name <- data$Species
 PAM_points <- lets.presab.points(xy, sp_name, xmn = -180, xmx = 180,ymn = -90, ymx = 90, res = 1)
-write.csv(PAM_points$Presence_and_Absence_Matrix,"matrix.csv")
+write.csv(PAM_points$Presence_and_Absence_Matrix,"matrix.csv") ## saved in github platform
 
-## matrix.csv were input into ArcGIS to remove those outside of China boundary,
-## and generated a matrix_in_China.csv.
+## The matrix.csv file was subsequently imported into ArcGIS to exclude grid cells with <50% land area following Kreft and Jetz (41) and He et al. (42),
+## resulting in the creation of the matrix_China.csv file and saved in github platform.
 
 ## estimating beta simpson value and use UPGMA to cluster grid cells
 library(ape)
@@ -16,40 +19,34 @@ matrix <- read.csv("matrix_in_China.csv",row.names=1)
 beta_sim<-betadiver(matrix,"sim")
 beta_sim_tree <- hclust(beta_sim,"ave")
 
-## determining the best optimal cluster value
 library(GMD)
 css.obj <- css.hclust(beta_sim,beta_sim_tree)
 elbow.obj <- elbow.batch(css.obj)
 k <- elbow.obj$k
-cutree.obj <- cutree(beta_sim_tree,k=k)
-write.csv(cutree.obj,"cutree.obj.csv")
+cutree.obj <- cutree(beta_sim_tree,k=k) ## the clustered grid cells were saved in cutree.obj
 
 ## estimating endemism
 library(phyloregion)
 matrix1<-as.matrix(matrix)
 matrix2<-Matrix(matrix1)
 endemism<-weighted_endemism(matrix2)
-write.csv(endemism,"endemism.csv")
 
-## matrix_in_China.csv were manually edited to remove those species not in the tree.
-## and generated a file matrix_PDPE.csv
+## The file matrix_China.csv was manually edited to remove species that are not included in the tree, resulting in the creation of a new file called matrix_PDPE.csv.
 
 ## estimating phylogenetic diversity and phylogenetic endemism
 library(phyloregion)
-tree <- read.tree("intree.dated.tre")
+tree <- read.tree("intree.dated.reduced.tre") ## remove those species not in the matrix compared with intree.dated.tre
 com <- read.csv("matrix_PDPE.csv",row.names=1)
 com1 <- Matrix(as.matrix(com))
 pd <-PD(com1,tree)
-write.csv(pd,"pd.csv")
 pe <- phylo_endemism(com1, tree)
-write.csv(pe,"pe.csv")
 
-## spatial regression model
+## performing spatial regression model
 library(spdep)
 library(sp)
 library(spatialreg)
 
-input <- read.csv("described~cryptic.csv")  ## manually edited from matrix_in_China.csv
+input <- read.csv("described~cryptic.csv")  ## manually edited from matrix_China.csv, containing ln-transformed richness of described species and cryptic species of each grid cell
 lat <-input$lat
 long <-input$lon
 test <- input[,c(1,2)]
