@@ -15,7 +15,7 @@ write.csv(PAM_points$Presence_and_Absence_Matrix,"matrix.csv") ## saved in githu
 ## estimating beta simpson value and use UPGMA to cluster grid cells
 library(ape)
 library(vegan)
-matrix <- read.csv("matrix_in_China.csv",row.names=1)
+matrix <- read.csv("matrix China.csv",row.names=1)
 beta_sim<-betadiver(matrix,"sim")
 beta_sim_tree <- hclust(beta_sim,"ave")
 
@@ -35,8 +35,8 @@ endemism<-weighted_endemism(matrix2)
 
 ## estimating phylogenetic diversity and phylogenetic endemism
 library(phyloregion)
-tree <- read.tree("intree.dated.reduced.tre") ## remove those species not in the matrix compared with intree.dated.tre
-com <- read.csv("matrix_PDPE.csv",row.names=1)
+tree <- read.tree("Chinese amphibians phylogeny reduced for PD and PE.tre") ## remove those species not in the matrix compared with intree.dated.tre
+com <- read.csv("matrix China  reduced for PD and PE.csv",row.names=1)
 com1 <- Matrix(as.matrix(com))
 pd <-PD(com1,tree)
 pe <- phylo_endemism(com1, tree)
@@ -46,7 +46,7 @@ library(spdep)
 library(sp)
 library(spatialreg)
 
-input <- read.csv("described~cryptic.csv")  ## manually edited from matrix_China.csv, containing ln-transformed richness of described species and cryptic species of each grid cell
+input <- read.csv("species richness of described and cryptic.csv")  ## manually edited from matrix_China.csv, containing ln-transformed richness of described species and cryptic species of each grid cell
 lat <-input$lat
 long <-input$lon
 test <- input[,c(1,2)]
